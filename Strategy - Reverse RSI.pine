@@ -1,5 +1,5 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © Dillon_Grech
+// © handikogesang
 
 //@version=4
 strategy("Strategy - Reverse RSI", overlay=true, currency = currency.USD, pyramiding = 1, initial_capital = 50000)
