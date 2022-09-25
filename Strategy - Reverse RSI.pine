@@ -1,0 +1,252 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Dillon_Grech
+
+//@version=4
+strategy("Strategy - Reverse RSI", overlay=true, currency = currency.USD, pyramiding = 1, initial_capital = 50000)
+
+//==============================================================================
+//FOREX EXCHANGE - Currency Conversion
+//==============================================================================
+//Select quote currency
+quoteCurrency = syminfo.currency //gets quote currency automatically by looking using syminfo function - thank you Rodenwild
+
+//Get currency pair rate quoted against USD (base currency)
+usdUSDrate = security("USDUSD", "D", close[1])
+gbpUSDrate = security("GBPUSD", "D", close[1])
+audUSDrate = security("AUDUSD", "D", close[1])
+nzdUSDrate = security("NZDUSD", "D", close[1])
+cadUSDrate = security("CADUSD", "D", close[1])
+chfUSDrate = security("CHFUSD", "D", close[1])
+eurUSDrate = security("EURUSD", "D", close[1])
+jpyUSDrate = security("JPYUSD", "D", close[1])
+
+//Fuction to get currency rate into variable 
+cr_function(source) => 
+    if quoteCurrency == "USD"
+        1
+    else
+        if quoteCurrency == "GBP"
+            gbpUSDrate 
+        else
+            if quoteCurrency == "AUD"
+                audUSDrate
+            else
+                if quoteCurrency == "NZD"
+                    nzdUSDrate
+                else
+                    if quoteCurrency == "CAD"
+                        cadUSDrate
+                    else
+                        if quoteCurrency == "CHF"
+                            chfUSDrate
+                        else
+                            if quoteCurrency == "EUR"
+                                eurUSDrate
+                            else
+                                jpyUSDrate
+
+//Put currency rate function into variable
+cr_multi = cr_function(tr(true))
+//==============================================================================
+
+//==============================================================================
+//BACKTEST DATE RANGE - Select Dates
+//==============================================================================
+//Input for date window
+startDay   = 1 //input(defval = 1,    title = "Start Day",   type = input.integer, minval = 1, maxval = 31)
+startMonth = 1 //input(defval = 1,    title = "Start Month", type = input.integer, minval = 1, maxval = 12)
+startYear  = 1970 //input(defval = 1970, title = "Start Year",  type = input.integer, minval = 1970          )
+endDay     = 31 //input(defval = 31,    title = "End Day",     type = input.integer, minval = 1, maxval = 31)
+endMonth   = 12 //input(defval = 12,    title = "End Month",   type = input.integer, minval = 1, maxval = 12)
+endYear    = 2222 //input(defval = 2222, title = "End Year",    type = input.integer, minval = 1970          )
+
+//Submit date window
+startDate   = timestamp(startYear, startMonth, startDay, 00, 00, 00)  // backtest start date
+endDate     = timestamp(endYear,   endMonth,   endDay,   23, 59, 59)  // backtest end date
+dateRange() => time >= startDate and time <= endDate ? true : false   // specify where date range is true
+
+// Remove EurChf from testing
+EURCHFCrashDate = syminfo.currency == "CHF" or syminfo.basecurrency == "CHF" ? time >= timestamp(2015,01,01) and time <= timestamp(2015,01,18) ? false : true : true
+//==============================================================================
+
+//==============================================================================
+//INDICATOR 1 - Trigger
+//==============================================================================
+//Indicator RSI
+
+// inputs
+rsi_length = input(title="RSI Length", defval=20)
+rsi_ma_length = input(title="RSI SMA Length", defval=5)
+src = input(title="Source",defval=close)
+
+upper_limit = input(title="Upper Limit", defval=55)
+lower_limit = input(title="Lower Limit", defval=49)
+
+// calculating
+up = rma(max(change(src), 0), rsi_length)
+down = rma(-min(change(src), 0), rsi_length)
+rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100 / (1 + up / down))
+rsi_ma = sma(rsi, rsi_ma_length)
+
+Ind_1_L = crossunder(rsi_ma, lower_limit)
+Ind_1_S = crossover(rsi_ma, upper_limit)
+//==============================================================================
+
+//==============================================================================
+//INDICATOR 2
+//==============================================================================
+//EMA Ribbon
+
+emaLen1 = input(title="Ema 1 - Period", defval=4)
+emaLen2 = input(title="Ema 2 - Period", defval=10)
+emaLen3 = input(title="Ema 3 - Period", defval=15)
+emaLen4 = input(title="Ema 4 - Period", defval=19)
+emaLen5 = input(title="Ema 5 - Period", defval=25)
+
+ema1 = ema(src, emaLen1)
+ema2 = ema(src, emaLen2)
+ema3 = ema(src, emaLen3)
+ema4 = ema(src, emaLen4)
+ema5 = ema(src, emaLen5)
+
+//Long and Short Orders (Confirmation Conditions)
+Ind_2_L = src < ema1 and ema1 < ema2 and ema2 < ema3 and ema3 < ema4 and ema4 < ema5
+Ind_2_S = src > ema1 and ema1 > ema2 and ema2 > ema3 and ema3 > ema4 and ema4 > ema5
+//==============================================================================
+
+//==============================================================================
+//INDICATOR 3
+//==============================================================================
+//Time Window
+
+i_sess = input(title="Session",defval="1600-1900",type=input.session, options=["1300-1600","1400-1700","1500-1800","1600-1900", "1700-2000","1800-2100","1900-2200","2000-2300","0200-0500","0300-0600"])
+t = time(timeframe.period, i_sess)
+bgcolor(time == t ? color.green : na)
+
+//Long and Short Orders (Confirmation Conditions)
+Ind_3_L = time == t ? true : false
+Ind_3_S = time == t ? true : false
+//==============================================================================
+
+//==============================================================================
+//INDICATOR 4
+//==============================================================================
+//Indicator Name
+
+//Long and Short Orders (Confirmation Conditions)
+Ind_4_S = true
+Ind_4_L = true
+//==============================================================================
+
+//==============================================================================
+//INDICATOR 5
+//==============================================================================
+//Indicator Name
+
+//Long and Short Orders (Confirmation Conditions)
+Ind_5_L = true
+Ind_5_S = true
+//==============================================================================
+
+
+//==============================================================================
+//INDICATOR 6
+//==============================================================================
+//Indicator Name
+
+//Long and Short Orders (Confirmation Conditions)
+Ind_6_L = true
+Ind_6_S = true
+//==============================================================================
+
+
+
+//==============================================================================
+//MONEY MANAGEMENT - Pivot high low
+//==============================================================================
+//Entrer intial capital and percentage risk inputs
+atr_length = input(title="ATR Length", defval=14)
+atr_mult = input(title="ATR Multiple", defval = 2)
+
+atrValue = atr(atr_length)
+
+percentRisk    = input(title = "Risk Per Trade",   defval = 0.01, minval = 0.001, maxval =0.1)
+
+//Enter inputs
+Multi_Profit = input(title = "Profit Multiple", type=input.float, defval = 1.5)
+Multi_SL     = input(title = "SL Distance Multiple", type=input.float, defval = 1.0)
+
+RiskDollar = atrValue * atr_mult * Multi_SL
+
+//Get position size
+posSize = round(((strategy.initial_capital * percentRisk) / (RiskDollar))/cr_multi)
+//==============================================================================
+
+
+
+
+//==============================================================================
+//ENTRY CONDITIONS - Submit Orders
+//==============================================================================
+//Long and short strategy conditions
+//entry_long  = strategy.position_size<=0 and dateRange() and EURCHFCrashDate and Ind_1_L and Ind_2_L and Ind_3_L and Ind_4_L and Ind_5_L and Ind_6_L
+//entry_short = strategy.position_size>=0 and dateRange() and EURCHFCrashDate and Ind_1_S and Ind_2_S and Ind_3_S and Ind_4_S and Ind_5_S and Ind_6_S
+
+entry_long  = strategy.position_size==0 and dateRange() and EURCHFCrashDate and Ind_1_L and Ind_2_L and Ind_3_L and Ind_4_L and Ind_5_L and Ind_6_L
+entry_short = strategy.position_size==0 and dateRange() and EURCHFCrashDate and Ind_1_S and Ind_2_S and Ind_3_S and Ind_4_S and Ind_5_S and Ind_6_S
+
+plotshape(entry_long, color=color.lime, style=shape.arrowup,   location = location.belowbar, text="Buy")
+plotshape(entry_short, color=color.red, style=shape.arrowdown, location = location.abovebar, text="Sell")
+
+//Store ATR and Price upon entry of trade.
+entry_RiskDollar    = float(0.0) //set float
+entry_price         = float(0.0) //set float
+entry_RiskDollar   := strategy.position_size == 0 or entry_long or entry_short ? RiskDollar   : entry_RiskDollar[1]
+entry_price        := strategy.position_size == 0 or entry_long or entry_short ? close : entry_price[1]
+
+//Submit long and short orders based on entry conditions
+if(entry_long)
+    strategy.entry(id="Long Entry 1", long=true,  qty=posSize)
+
+if(entry_short)
+    strategy.entry(id="Short Entry 1", long=false, qty=posSize)
+//==============================================================================
+
+//==============================================================================
+//TAKE PROFIT & STOP LOSS VALUES
+//==============================================================================
+//Calculate stop loss and take profit distance (in price)
+nLoss   = entry_RiskDollar
+nProfit = entry_RiskDollar * Multi_Profit
+
+//Find long take profit and stop loss levels
+long_profit_level   = float(0.0) //set float
+long_stop_level     = float(0.0) //set float
+long_profit_level  := entry_price + nProfit
+long_stop_level    := entry_price - nLoss
+
+//Find short take profit and stop loss levels
+short_profit_level  = float(0.0) //set float
+short_stop_level    = float(0.0) //set float
+short_profit_level := entry_price - nProfit
+short_stop_level   := entry_price + nLoss
+
+//Plot stop loss and profit level on graph; hide levels when no trade
+plot(strategy.position_size <= 0 or entry_long or entry_short ? na : long_stop_level,    color = color.red,   style = plot.style_linebr, linewidth = 2)
+plot(strategy.position_size <= 0 or entry_long or entry_short ? na : long_profit_level,  color = color.green, style = plot.style_linebr, linewidth = 2)
+plot(strategy.position_size >= 0 or entry_long or entry_short ? na : short_stop_level,   color = color.red,   style = plot.style_linebr, linewidth = 2)
+plot(strategy.position_size >= 0 or entry_long or entry_short ? na : short_profit_level, color = color.green, style = plot.style_linebr, linewidth = 2)
+//==============================================================================
+
+//==============================================================================
+//EXIT CONDITIONS - Submit Orders
+//==============================================================================
+//Submit exit orders on static profit and loss
+strategy.exit("TP/SL 1", "Long Entry 1",  stop = long_stop_level,  limit = long_profit_level)
+strategy.exit("TP/SL 1", "Short Entry 1", stop = short_stop_level, limit = short_profit_level)
+
+//Submit exit orders on exit indicator - Exit 1
+//strategy.close(id="Long Entry 1",  comment = "Exit 1 L1", when = Ind_1_S)
+//strategy.close(id="Short Entry 1", comment = "Exit 1 S1", when = Ind_1_L)
+//==============================================================================
+
