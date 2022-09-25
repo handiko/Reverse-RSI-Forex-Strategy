@@ -3,4 +3,10 @@ This is a scalping forex strategy which run during the quiet hour of sydney sess
 
 ## Performance From 2020-01-01 until 2022-09-25
 
+![](./USDCHF.png)
 
+![](./CHFJPY.png)
+
+![](./AUDCAD.png)
+
+![](./GBPAUD.png)
